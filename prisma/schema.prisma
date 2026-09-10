@@ -1,0 +1,76 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Using Postgres (Neon) so the app can run on serverless hosts with zero local infra.
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+}
+
+// One row per installed shop. Holds the shop's own timeline step definitions
+// (sellers can rename/reorder/add steps) and plan/branding gates.
+model Shop {
+  id           String          @id @default(cuid())
+  shopDomain   String          @unique
+  plan         String          @default("free")
+  stages       Json
+  hideBranding Boolean         @default(false)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  timelines    OrderTimeline[]
+}
+
+// One row per Shopify order. currentStage is the key shown on the storefront widget.
+model OrderTimeline {
+  id             String        @id @default(cuid())
+  shopDomain     String
+  shop           Shop          @relation(fields: [shopDomain], references: [shopDomain], onDelete: Cascade)
+  shopifyOrderId String
+  orderName      String
+  customerEmail  String?
+  currentStage   String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  updates        StageUpdate[]
+
+  @@unique([shopDomain, shopifyOrderId])
+  @@index([shopDomain, orderName])
+}
+
+// Append-only history of every manual stage change a seller makes.
+// This is the audit trail that backs the "seller-updated, not real-time-tracked" disclosure.
+model StageUpdate {
+  id              String        @id @default(cuid())
+  orderTimelineId String
+  orderTimeline   OrderTimeline @relation(fields: [orderTimelineId], references: [id], onDelete: Cascade)
+  stageKey        String
+  note            String?
+  photoUrl        String?
+  createdAt       DateTime      @default(now())
+
+  @@index([orderTimelineId])
+}

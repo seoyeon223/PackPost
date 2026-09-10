@@ -1,0 +1,61 @@
+{% comment %}
+  PackPost — seller-updated delivery timeline widget.
+  Calls the app's Admin backend through the App Proxy at /apps/packpost/status
+  (same-origin, no API key needed). Renders nothing tracked in real time —
+  every step shown here was typed in by the seller.
+{% endcomment %}
+<div class="goods-timeline" data-proxy-path="/apps/{{ block.settings.proxy_subpath | default: 'packpost' }}/status">
+  <form class="goods-timeline__form">
+    <div class="goods-timeline__field">
+      <label for="goods-timeline-order-{{ block.id }}">주문번호</label>
+      <input
+        id="goods-timeline-order-{{ block.id }}"
+        type="text"
+        name="order"
+        inputmode="numeric"
+        placeholder="예: 1001"
+        required
+      />
+    </div>
+    <div class="goods-timeline__field">
+      <label for="goods-timeline-email-{{ block.id }}">주문 시 입력한 이메일</label>
+      <input
+        id="goods-timeline-email-{{ block.id }}"
+        type="email"
+        name="email"
+        placeholder="you@example.com"
+        required
+      />
+    </div>
+    <button type="submit">배송 현황 조회</button>
+  </form>
+
+  <p class="goods-timeline__error" hidden></p>
+  <div class="goods-timeline__result" hidden>
+    <ol class="goods-timeline__steps"></ol>
+    <p class="goods-timeline__disclaimer">
+      이 정보는 판매자가 직접 입력한 참고용 안내이며, 실시간 위치 추적
+      정보가 아닙니다. 정확한 운송장 조회는 주문 확인 메일의 배송사 링크를
+      이용해 주세요.
+    </p>
+  </div>
+</div>
+
+{{ 'goods-timeline.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'goods-timeline.js' | asset_url }}" defer></script>
+
+{% schema %}
+{
+  "name": "PackPost 배송 타임라인",
+  "target": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "proxy_subpath",
+      "label": "App proxy subpath",
+      "default": "packpost",
+      "info": "shopify.app.toml의 [app_proxy].subpath 값과 동일해야 합니다."
+    }
+  ]
+}
+{% endschema %}

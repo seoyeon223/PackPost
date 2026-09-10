@@ -1,0 +1,154 @@
+.goods-timeline {
+  max-width: 480px;
+  font-family: inherit;
+  color: inherit;
+}
+
+.goods-timeline__form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.goods-timeline__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1 1 160px;
+}
+
+.goods-timeline__field label {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.goods-timeline__field input {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.goods-timeline__form button {
+  padding: 0.55rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background: #1a1a1a;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.goods-timeline__form button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.goods-timeline__error {
+  margin-top: 0.75rem;
+  color: #c0392b;
+  font-size: 0.9rem;
+}
+
+.goods-timeline__result {
+  margin-top: 1.25rem;
+}
+
+.goods-timeline__steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.goods-timeline__step {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0;
+  position: relative;
+  font-size: 0.9rem;
+  opacity: 0.55;
+}
+
+.goods-timeline__step::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: -50%;
+  width: 2px;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.goods-timeline__step:first-child::before {
+  display: none;
+}
+
+.goods-timeline__dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.goods-timeline__step--done {
+  opacity: 0.85;
+}
+
+.goods-timeline__step--done .goods-timeline__dot {
+  background: #2e7d32;
+}
+
+.goods-timeline__step--current {
+  opacity: 1;
+  font-weight: 600;
+}
+
+.goods-timeline__step--current .goods-timeline__dot {
+  background: #1a1a1a;
+  box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.15);
+}
+
+.goods-timeline__disclaimer {
+  margin-top: 1rem;
+  font-size: 0.75rem;
+  opacity: 0.65;
+  line-height: 1.4;
+}
+
+.goods-timeline__history-heading {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.goods-timeline__history {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.goods-timeline__history-item {
+  font-size: 0.8rem;
+  border-left: 2px solid rgba(0, 0, 0, 0.1);
+  padding-left: 0.6rem;
+}
+
+.goods-timeline__history-date {
+  opacity: 0.6;
+  margin-right: 0.4rem;
+}
+
+.goods-timeline__note {
+  margin: 0.15rem 0 0;
+  opacity: 0.8;
+}

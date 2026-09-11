@@ -98,11 +98,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
                 id
                 name
                 email
-                customer {
-                  defaultEmailAddress {
-                    emailAddress
-                  }
-                }
               }
             }
           }
@@ -114,14 +109,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     let skipped = 0;
     for (const { node } of edges) {
       const shopifyOrderId = node.id.split("/").pop();
+      // Reading the linked customer object requires the read_customers
+      // scope, which this app doesn't request (order.email already covers
+      // most cases, and the orders/create webhook has its own
+      // customer-email fallback via the REST-shaped payload).
       const result = await ensureOrderTimeline({
         shopDomain: session.shop,
         shopifyOrderId,
         orderName: node.name,
-        // order.email can be blank before contact info is fully attached
-        // (e.g. unpaid orders) — fall back to the linked customer's email.
-        customerEmail:
-          node.email || node.customer?.defaultEmailAddress?.emailAddress || null,
+        customerEmail: node.email || null,
       });
       if (!result) skipped += 1;
     }

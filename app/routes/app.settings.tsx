@@ -10,13 +10,15 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { getOrCreateShop, getStages, type Stage } from "../models/timeline.server";
-import { getSettingsMessages, resolveLocale } from "../i18n.server";
+import { getSettingsMessages, resolveLocale } from "../i18n";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const locale = resolveLocale(request.headers.get("accept-language"));
   const shop = await getOrCreateShop(session.shop, locale);
-  return { stages: getStages(shop), t: getSettingsMessages(locale) };
+  // Locale only — getSettingsMessages() has function values (e.g. stageFieldLabel),
+  // and loader data is JSON-serialized, so functions can't survive the trip.
+  return { stages: getStages(shop), locale };
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -47,7 +49,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function Settings() {
-  const { stages: initialStages, t } = useLoaderData<typeof loader>();
+  const { stages: initialStages, locale } = useLoaderData<typeof loader>();
+  const t = getSettingsMessages(locale);
   const fetcher = useFetcher<typeof action>();
   const shopify = useAppBridge();
   const [stages, setStages] = useState<Stage[]>(initialStages);

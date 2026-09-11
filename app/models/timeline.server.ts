@@ -1,5 +1,5 @@
 import prisma from "../db.server";
-import { resolveLocale, type Locale } from "../i18n.server";
+import { resolveLocale, type Locale } from "../i18n";
 
 export type Stage = { key: string; label: string };
 

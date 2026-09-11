@@ -15,7 +15,7 @@ import {
   getStages,
   setStage,
 } from "../models/timeline.server";
-import { getDashboardMessages, resolveLocale } from "../i18n.server";
+import { getDashboardMessages, resolveLocale } from "../i18n";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -31,7 +31,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return {
     stages: getStages(shop),
     timelines,
-    t: getDashboardMessages(locale),
+    // Locale only — getDashboardMessages() has function values (e.g. bulkApply),
+    // and loader data is JSON-serialized, so functions can't survive the trip.
+    locale,
   };
 };
 
@@ -91,7 +93,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function Index() {
-  const { stages, timelines, t } = useLoaderData<typeof loader>();
+  const { stages, timelines, locale } = useLoaderData<typeof loader>();
+  const t = getDashboardMessages(locale);
   const fetcher = useFetcher<typeof action>();
   const shopify = useAppBridge();
   const [selected, setSelected] = useState<string[]>([]);

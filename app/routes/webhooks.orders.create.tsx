@@ -15,6 +15,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     name: string;
     email?: string | null;
     contact_email?: string | null;
+    customer?: { email?: string | null } | null;
   };
 
   await ensureOrderTimeline({
@@ -22,8 +23,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     shopifyOrderId: String(order.id),
     orderName: order.name,
     // `??` wouldn't fall through here — Shopify can send "" rather than
-    // omitting the field, and "" is not null/undefined.
-    customerEmail: order.email || order.contact_email || null,
+    // omitting the field, and "" is not null/undefined. The order's own
+    // email/contact_email can also be blank when the email only lives on
+    // the linked customer profile, so fall back to that too.
+    customerEmail: order.email || order.contact_email || order.customer?.email || null,
   });
 
   return new Response();

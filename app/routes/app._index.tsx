@@ -195,7 +195,12 @@ export default function Index() {
 
   return (
     <s-page heading={t.heading}>
-      <s-button slot="primary-action" onClick={syncOrders} {...(isBusy ? { loading: true } : {})}>
+      <s-button
+        slot="primary-action"
+        variant="primary"
+        onClick={syncOrders}
+        {...(isBusy ? { loading: true } : {})}
+      >
         {t.syncOrders}
       </s-button>
 

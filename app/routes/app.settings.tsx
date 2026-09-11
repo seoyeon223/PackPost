@@ -88,7 +88,7 @@ export default function Settings() {
 
   return (
     <s-page heading={t.heading}>
-      <s-button slot="primary-action" onClick={save}>
+      <s-button slot="primary-action" variant="primary" onClick={save}>
         {t.save}
       </s-button>
 

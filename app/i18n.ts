@@ -36,6 +36,13 @@ const dashboard = {
       "“이 정보는 판매자가 직접 입력한 참고용 안내이며, 실시간 위치 추적 정보가 아닙니다.” — 위젯에 항상 함께 표시됩니다.",
     toastBulkUpdated: (count: number) => `${count}건 상태를 변경했습니다`,
     toastSyncing: "최근 주문을 불러오는 중...",
+    deleteButton: "삭제",
+    bulkDelete: (count: number) => `선택한 ${count}건 삭제`,
+    confirmDelete:
+      "이 주문의 타임라인 기록을 삭제할까요? Shopify의 실제 주문은 삭제되지 않으며, 구매자 조회 위젯에서도 더 이상 나타나지 않습니다.",
+    confirmBulkDelete: (count: number) =>
+      `선택한 ${count}건의 타임라인 기록을 삭제할까요? Shopify의 실제 주문은 삭제되지 않습니다.`,
+    toastDeleted: (count: number) => `${count}건 삭제했습니다`,
     dateLocale: "ko-KR",
   },
   en: {
@@ -63,6 +70,13 @@ const dashboard = {
       '"This information was entered manually by the seller and is not real-time location tracking." — always shown alongside the widget.',
     toastBulkUpdated: (count: number) => `Updated ${count} orders`,
     toastSyncing: "Syncing recent orders...",
+    deleteButton: "Delete",
+    bulkDelete: (count: number) => `Delete ${count} selected`,
+    confirmDelete:
+      "Delete this order's timeline record? The actual Shopify order won't be affected, but it will no longer show up in the buyer's lookup widget.",
+    confirmBulkDelete: (count: number) =>
+      `Delete the timeline record for ${count} selected orders? The actual Shopify orders won't be affected.`,
+    toastDeleted: (count: number) => `Deleted ${count} orders`,
     dateLocale: "en-US",
   },
 } as const;

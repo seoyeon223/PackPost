@@ -59,6 +59,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     return { ok: true, updated: ids.length };
   }
 
+  if (intent === "deleteTimelines") {
+    const ids = String(formData.get("ids"))
+      .split(",")
+      .filter(Boolean);
+
+    const { count } = await db.orderTimeline.deleteMany({
+      where: { id: { in: ids }, shopDomain: session.shop },
+    });
+    return { ok: true, deleted: count };
+  }
+
   if (intent === "syncOrders") {
     const response = await admin.graphql(
       `#graphql
@@ -129,6 +140,24 @@ export default function Index() {
     );
   };
 
+  const deleteSingle = (id: string) => {
+    if (!window.confirm(t.confirmDelete)) return;
+    fetcher.submit({ _action: "deleteTimelines", ids: id }, { method: "POST" });
+    shopify.toast.show(t.toastDeleted(1));
+    setSelected((prev) => prev.filter((x) => x !== id));
+  };
+
+  const deleteBulk = () => {
+    if (selected.length === 0) return;
+    if (!window.confirm(t.confirmBulkDelete(selected.length))) return;
+    fetcher.submit(
+      { _action: "deleteTimelines", ids: selected.join(",") },
+      { method: "POST" },
+    );
+    shopify.toast.show(t.toastDeleted(selected.length));
+    setSelected([]);
+  };
+
   const syncOrders = () => {
     fetcher.submit({ _action: "syncOrders" }, { method: "POST" });
     shopify.toast.show(t.toastSyncing);
@@ -170,6 +199,15 @@ export default function Index() {
           >
             {t.bulkApply(selected.length)}
           </s-button>
+          <s-button
+            variant="tertiary"
+            tone="critical"
+            onClick={deleteBulk}
+            disabled={selected.length === 0}
+            {...(isBusy ? { loading: true } : {})}
+          >
+            {t.bulkDelete(selected.length)}
+          </s-button>
         </s-stack>
       </s-section>
 
@@ -210,6 +248,13 @@ export default function Index() {
                   <s-text color="subdued">
                     {t.lastUpdated(new Date(timeline.updatedAt).toLocaleString(t.dateLocale))}
                   </s-text>
+                  <s-button
+                    variant="tertiary"
+                    tone="critical"
+                    onClick={() => deleteSingle(timeline.id)}
+                  >
+                    {t.deleteButton}
+                  </s-button>
                 </s-stack>
               </s-box>
             ))}

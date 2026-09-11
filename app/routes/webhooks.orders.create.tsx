@@ -21,7 +21,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     shopDomain: shop,
     shopifyOrderId: String(order.id),
     orderName: order.name,
-    customerEmail: order.email ?? order.contact_email ?? null,
+    // `??` wouldn't fall through here — Shopify can send "" rather than
+    // omitting the field, and "" is not null/undefined.
+    customerEmail: order.email || order.contact_email || null,
   });
 
   return new Response();

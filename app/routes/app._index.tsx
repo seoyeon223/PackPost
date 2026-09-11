@@ -69,6 +69,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
                 id
                 name
                 email
+                customer {
+                  email
+                }
               }
             }
           }
@@ -83,7 +86,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         shopDomain: session.shop,
         shopifyOrderId,
         orderName: node.name,
-        customerEmail: node.email,
+        // order.email can be blank before contact info is fully attached
+        // (e.g. unpaid orders) — fall back to the linked customer's email.
+        customerEmail: node.email || node.customer?.email || null,
       });
     }
     return { ok: true, synced: edges.length };

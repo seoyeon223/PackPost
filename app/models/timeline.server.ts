@@ -64,6 +64,14 @@ export function getStages(shop: { stages: unknown }): Stage[] {
   return DEFAULT_STAGES;
 }
 
+// Shopify sometimes reports an order's email as "" rather than omitting it
+// (e.g. orders synced before payment/contact info is fully attached) — treat
+// that the same as no email so it doesn't get stuck unmatchable.
+function normalizeEmail(email?: string | null): string | null {
+  const trimmed = email?.trim();
+  return trimmed ? trimmed : null;
+}
+
 export async function ensureOrderTimeline(params: {
   shopDomain: string;
   shopifyOrderId: string;
@@ -73,6 +81,7 @@ export async function ensureOrderTimeline(params: {
   const shop = await getOrCreateShop(params.shopDomain);
   const stages = getStages(shop);
   const firstStage = stages[0]?.key ?? DEFAULT_STAGES[0].key;
+  const customerEmail = normalizeEmail(params.customerEmail);
 
   return prisma.orderTimeline.upsert({
     where: {
@@ -81,12 +90,15 @@ export async function ensureOrderTimeline(params: {
         shopifyOrderId: params.shopifyOrderId,
       },
     },
-    update: {},
+    // Re-syncing (e.g. "최근 주문 불러오기") should pick up an email that
+    // wasn't attached to the order yet the first time around. Never clobber
+    // a known email with a blank one from a stale webhook payload, though.
+    update: customerEmail ? { customerEmail } : {},
     create: {
       shopDomain: params.shopDomain,
       shopifyOrderId: params.shopifyOrderId,
       orderName: params.orderName,
-      customerEmail: params.customerEmail,
+      customerEmail,
       currentStage: firstStage,
     },
   });

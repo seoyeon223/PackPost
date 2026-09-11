@@ -79,10 +79,12 @@ export default function Billing() {
             {t.cancelButton}
           </s-button>
         ) : (
-          // A real form submission (not fetcher.submit/fetch) so the browser
-          // follows Shopify's billing-approval redirect chain as a genuine
-          // top-level navigation instead of it being swallowed by JS.
-          <Form method="post">
+          // reloadDocument forces an actual full-page form submission —
+          // without it, React Router still posts to /app/billing.data via
+          // fetch(), which can't carry cookies through Shopify's
+          // cross-origin billing-approval redirect the way a real browser
+          // navigation does (that fetch was coming back 401).
+          <Form method="post" reloadDocument>
             <input type="hidden" name="_action" value="upgrade" />
             <s-button type="submit">{t.upgradeButton}</s-button>
           </Form>

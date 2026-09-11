@@ -99,7 +99,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
                 name
                 email
                 customer {
-                  email
+                  defaultEmailAddress {
+                    emailAddress
+                  }
                 }
               }
             }
@@ -118,7 +120,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         orderName: node.name,
         // order.email can be blank before contact info is fully attached
         // (e.g. unpaid orders) — fall back to the linked customer's email.
-        customerEmail: node.email || node.customer?.email || null,
+        customerEmail:
+          node.email || node.customer?.defaultEmailAddress?.emailAddress || null,
       });
       if (!result) skipped += 1;
     }

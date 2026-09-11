@@ -150,9 +150,9 @@ export default function Index() {
             }
           >
             {stages.map((s) => (
-              <option key={s.key} value={s.key}>
+              <s-option key={s.key} value={s.key}>
                 {s.label}
-              </option>
+              </s-option>
             ))}
           </s-select>
           <s-button
@@ -194,9 +194,9 @@ export default function Index() {
                     }
                   >
                     {stages.map((s) => (
-                      <option key={s.key} value={s.key}>
+                      <s-option key={s.key} value={s.key}>
                         {s.label}
-                      </option>
+                      </s-option>
                     ))}
                   </s-select>
                   <s-text color="subdued">

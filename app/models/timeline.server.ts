@@ -72,6 +72,21 @@ function normalizeEmail(email?: string | null): string | null {
   return trimmed ? trimmed : null;
 }
 
+// Free plan cap. Orders already being tracked are never affected by this —
+// it only stops *new* orders from being added once a free shop is over the
+// limit for the current calendar month, so a seller who shared the widget
+// link with buyers never sees an already-tracked order break.
+export const FREE_MONTHLY_ORDER_LIMIT = 50;
+
+export async function countMonthlyTimelines(shopDomain: string, now = new Date()) {
+  const start = new Date(now.getFullYear(), now.getMonth(), 1);
+  return prisma.orderTimeline.count({
+    where: { shopDomain, createdAt: { gte: start } },
+  });
+}
+
+// Returns the created/updated row, or null if a free shop is over its
+// monthly cap and this would have been a brand new order.
 export async function ensureOrderTimeline(params: {
   shopDomain: string;
   shopifyOrderId: string;
@@ -79,22 +94,38 @@ export async function ensureOrderTimeline(params: {
   customerEmail?: string | null;
 }) {
   const shop = await getOrCreateShop(params.shopDomain);
-  const stages = getStages(shop);
-  const firstStage = stages[0]?.key ?? DEFAULT_STAGES[0].key;
   const customerEmail = normalizeEmail(params.customerEmail);
 
-  return prisma.orderTimeline.upsert({
+  const existing = await prisma.orderTimeline.findUnique({
     where: {
       shopDomain_shopifyOrderId: {
         shopDomain: params.shopDomain,
         shopifyOrderId: params.shopifyOrderId,
       },
     },
+  });
+
+  if (existing) {
     // Re-syncing (e.g. "최근 주문 불러오기") should pick up an email that
     // wasn't attached to the order yet the first time around. Never clobber
     // a known email with a blank one from a stale webhook payload, though.
-    update: customerEmail ? { customerEmail } : {},
-    create: {
+    if (!customerEmail) return existing;
+    return prisma.orderTimeline.update({
+      where: { id: existing.id },
+      data: { customerEmail },
+    });
+  }
+
+  if (shop.plan !== "pro") {
+    const monthlyCount = await countMonthlyTimelines(params.shopDomain);
+    if (monthlyCount >= FREE_MONTHLY_ORDER_LIMIT) return null;
+  }
+
+  const stages = getStages(shop);
+  const firstStage = stages[0]?.key ?? DEFAULT_STAGES[0].key;
+
+  return prisma.orderTimeline.create({
+    data: {
       shopDomain: params.shopDomain,
       shopifyOrderId: params.shopifyOrderId,
       orderName: params.orderName,

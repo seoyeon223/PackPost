@@ -122,6 +122,12 @@
   line-height: 1.4;
 }
 
+.goods-timeline__badge {
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  opacity: 0.5;
+}
+
 .goods-timeline__history-heading {
   margin: 1.25rem 0 0.5rem;
   font-size: 0.85rem;

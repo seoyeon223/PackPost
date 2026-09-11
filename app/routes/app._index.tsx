@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type {
   ActionFunctionArgs,
   HeadersFunction,
@@ -7,10 +7,12 @@ import type {
 import { useFetcher, useLoaderData } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
-import { authenticate } from "../shopify.server";
+import { authenticate, PRO_PLAN } from "../shopify.server";
 import db from "../db.server";
 import {
+  countMonthlyTimelines,
   ensureOrderTimeline,
+  FREE_MONTHLY_ORDER_LIMIT,
   getOrCreateShop,
   getStages,
   setStage,
@@ -18,19 +20,35 @@ import {
 import { getDashboardMessages, resolveLocale } from "../i18n";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session } = await authenticate.admin(request);
+  const { session, billing } = await authenticate.admin(request);
   const locale = resolveLocale(request.headers.get("accept-language"));
 
   const shop = await getOrCreateShop(session.shop, locale);
+
+  // Keep our own plan flag in sync with Shopify's billing state — this is
+  // what gates the free monthly cap and the storefront widget's badge.
+  const { hasActivePayment } = await billing.check({ plans: [PRO_PLAN] });
+  const plan = hasActivePayment ? "pro" : "free";
+  if (shop.plan !== plan) {
+    await db.shop.update({
+      where: { shopDomain: session.shop },
+      data: { plan, hideBranding: hasActivePayment },
+    });
+  }
+
   const timelines = await db.orderTimeline.findMany({
     where: { shopDomain: session.shop },
     orderBy: { updatedAt: "desc" },
     take: 50,
   });
+  const monthlyCount = await countMonthlyTimelines(session.shop);
 
   return {
     stages: getStages(shop),
     timelines,
+    plan,
+    monthlyCount,
+    limit: FREE_MONTHLY_ORDER_LIMIT,
     // Locale only — getDashboardMessages() has function values (e.g. bulkApply),
     // and loader data is JSON-serialized, so functions can't survive the trip.
     locale,
@@ -91,9 +109,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     const json = await response.json();
     const edges = json.data?.orders?.edges ?? [];
 
+    let skipped = 0;
     for (const { node } of edges) {
       const shopifyOrderId = node.id.split("/").pop();
-      await ensureOrderTimeline({
+      const result = await ensureOrderTimeline({
         shopDomain: session.shop,
         shopifyOrderId,
         orderName: node.name,
@@ -101,15 +120,17 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         // (e.g. unpaid orders) — fall back to the linked customer's email.
         customerEmail: node.email || node.customer?.email || null,
       });
+      if (!result) skipped += 1;
     }
-    return { ok: true, synced: edges.length };
+    return { ok: true, synced: edges.length - skipped, skipped };
   }
 
   return { ok: false };
 };
 
 export default function Index() {
-  const { stages, timelines, locale } = useLoaderData<typeof loader>();
+  const { stages, timelines, plan, monthlyCount, limit, locale } =
+    useLoaderData<typeof loader>();
   const t = getDashboardMessages(locale);
   const fetcher = useFetcher<typeof action>();
   const shopify = useAppBridge();
@@ -163,6 +184,15 @@ export default function Index() {
     shopify.toast.show(t.toastSyncing);
   };
 
+  useEffect(() => {
+    const skipped =
+      fetcher.data && "skipped" in fetcher.data ? fetcher.data.skipped ?? 0 : 0;
+    if (skipped > 0) {
+      shopify.toast.show(t.toastSyncSkipped(skipped), { isError: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetcher.data]);
+
   return (
     <s-page heading={t.heading}>
       <s-button slot="primary-action" onClick={syncOrders} {...(isBusy ? { loading: true } : {})}>
@@ -175,6 +205,18 @@ export default function Index() {
           <s-text type="strong">{t.introStrong}</s-text>
           {t.introAfter}
         </s-paragraph>
+      </s-section>
+
+      <s-section heading={t.usageHeading}>
+        <s-paragraph>
+          {plan === "pro" ? t.usageProBody : t.usageBody(monthlyCount, limit)}
+        </s-paragraph>
+        {plan === "free" && monthlyCount >= limit && (
+          <s-paragraph color="subdued">{t.usageOverLimit}</s-paragraph>
+        )}
+        {plan === "free" && (
+          <s-link href="/app/billing">{t.upgradeLink}</s-link>
+        )}
       </s-section>
 
       <s-section heading={t.bulkHeading}>

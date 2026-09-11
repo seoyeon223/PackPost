@@ -43,6 +43,14 @@ const dashboard = {
     confirmBulkDelete: (count: number) =>
       `선택한 ${count}건의 타임라인 기록을 삭제할까요? Shopify의 실제 주문은 삭제되지 않습니다.`,
     toastDeleted: (count: number) => `${count}건 삭제했습니다`,
+    usageHeading: "이번 달 사용량",
+    usageBody: (count: number, limit: number) => `무료 플랜: 이번 달 ${count}/${limit}건 사용 중`,
+    usageOverLimit:
+      "이번 달 무료 한도를 넘었습니다. 한도를 넘긴 신규 주문은 추적되지 않으니, Pro로 업그레이드하면 무제한으로 쓸 수 있습니다.",
+    usageProBody: "Pro 플랜: 주문 수 제한 없음",
+    upgradeLink: "요금제 보기",
+    toastSyncSkipped: (skipped: number) =>
+      `무료 한도 초과로 ${skipped}건은 추적하지 못했습니다. Pro로 업그레이드해주세요.`,
     dateLocale: "ko-KR",
   },
   en: {
@@ -77,6 +85,14 @@ const dashboard = {
     confirmBulkDelete: (count: number) =>
       `Delete the timeline record for ${count} selected orders? The actual Shopify orders won't be affected.`,
     toastDeleted: (count: number) => `Deleted ${count} orders`,
+    usageHeading: "This month's usage",
+    usageBody: (count: number, limit: number) => `Free plan: ${count}/${limit} orders used this month`,
+    usageOverLimit:
+      "You're over the free monthly limit. New orders beyond the limit aren't tracked — upgrade to Pro for unlimited orders.",
+    usageProBody: "Pro plan: no order limit",
+    upgradeLink: "View plans",
+    toastSyncSkipped: (skipped: number) =>
+      `${skipped} order(s) weren't tracked because you're over the free limit. Please upgrade to Pro.`,
     dateLocale: "en-US",
   },
 } as const;
@@ -117,8 +133,45 @@ const settings = {
 } as const;
 
 const nav = {
-  ko: { orders: "주문 타임라인", settings: "단계 설정" },
-  en: { orders: "Order timeline", settings: "Stage settings" },
+  ko: { orders: "주문 타임라인", settings: "단계 설정", billing: "요금제" },
+  en: { orders: "Order timeline", settings: "Stage settings", billing: "Billing" },
+} as const;
+
+const billing = {
+  ko: {
+    heading: "요금제",
+    currentPlanHeading: "현재 플랜",
+    currentFree: "Free 플랜 — 월 50건까지 무료",
+    currentPro: "Pro 플랜 — 주문 수 제한 없음",
+    upgradeButton: "Pro로 업그레이드 ($6.99/월)",
+    cancelButton: "Pro 구독 해지",
+    confirmCancel:
+      "Pro 구독을 해지할까요? 다음 결제 주기부터 Free 플랜(월 50건 제한)으로 전환됩니다.",
+    plansHeading: "플랜 비교",
+    freePlanTitle: "Free — $0/월",
+    freePlanBody: "월 50건까지 주문 추적, 커스텀 단계, 스토어프론트 위젯. 위젯에 \"Powered by PackPost\" 배지가 표시됩니다.",
+    proPlanTitle: "Pro — $6.99/월",
+    proPlanBody: "주문 수 제한 없음, 위젯 배지 제거.",
+    toastUpgraded: "결제 페이지로 이동합니다...",
+    toastCancelled: "Pro 구독을 해지했습니다",
+  },
+  en: {
+    heading: "Billing",
+    currentPlanHeading: "Current plan",
+    currentFree: "Free plan — up to 50 orders/month",
+    currentPro: "Pro plan — no order limit",
+    upgradeButton: "Upgrade to Pro ($6.99/month)",
+    cancelButton: "Cancel Pro subscription",
+    confirmCancel:
+      "Cancel your Pro subscription? You'll move to the Free plan (50 orders/month) at the end of the current billing cycle.",
+    plansHeading: "Compare plans",
+    freePlanTitle: "Free — $0/month",
+    freePlanBody: 'Track up to 50 orders/month, custom stages, storefront widget. The widget shows a "Powered by PackPost" badge.',
+    proPlanTitle: "Pro — $6.99/month",
+    proPlanBody: "No order limit, badge removed.",
+    toastUpgraded: "Redirecting to checkout...",
+    toastCancelled: "Your Pro subscription was cancelled",
+  },
 } as const;
 
 export function getDashboardMessages(locale: Locale) {
@@ -131,4 +184,8 @@ export function getSettingsMessages(locale: Locale) {
 
 export function getNavMessages(locale: Locale) {
   return nav[locale];
+}
+
+export function getBillingMessages(locale: Locale) {
+  return billing[locale];
 }

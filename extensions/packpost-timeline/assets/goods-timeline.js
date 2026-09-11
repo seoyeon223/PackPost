@@ -91,6 +91,11 @@
     if (historyEl) {
       historyEl.innerHTML = historyHtml;
     }
+
+    var badgeEl = container.querySelector(".goods-timeline__badge");
+    if (badgeEl) {
+      badgeEl.hidden = !!data.hideBranding;
+    }
   }
 
   function init(root) {

@@ -2,7 +2,7 @@
 
 name = "PackPost"
 client_id = "b92d2d8f618980abdcd5f117802ba81a"
-application_url = "https://shopify.dev/apps/default-app-home"
+application_url = "https://packpost.onrender.com"
 embedded = true
 
 [access_scopes]
@@ -10,7 +10,7 @@ embedded = true
 scopes = "read_orders"
 
 [app_proxy]
-url = "https://REPLACE_WITH_APP_URL/proxy"
+url = "https://packpost.onrender.com/proxy"
 subpath = "packpost"
 prefix = "apps"
 
@@ -42,8 +42,7 @@ api_version = "2026-10"
   compliance_topics = [ "shop/redact" ]
 
 [auth]
-redirect_urls = [ "https://shopify.dev/apps/default-app-home/api/auth" ]
+redirect_urls = [ "https://packpost.onrender.com/auth/callback" ]
 
 [build]
-include_config_on_deploy = true
 automatically_update_urls_on_dev = true

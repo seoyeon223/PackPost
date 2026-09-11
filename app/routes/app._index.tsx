@@ -15,18 +15,24 @@ import {
   getStages,
   setStage,
 } from "../models/timeline.server";
+import { getDashboardMessages, resolveLocale } from "../i18n.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
+  const locale = resolveLocale(request.headers.get("accept-language"));
 
-  const shop = await getOrCreateShop(session.shop);
+  const shop = await getOrCreateShop(session.shop, locale);
   const timelines = await db.orderTimeline.findMany({
     where: { shopDomain: session.shop },
     orderBy: { updatedAt: "desc" },
     take: 50,
   });
 
-  return { stages: getStages(shop), timelines };
+  return {
+    stages: getStages(shop),
+    timelines,
+    t: getDashboardMessages(locale),
+  };
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -85,7 +91,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function Index() {
-  const { stages, timelines } = useLoaderData<typeof loader>();
+  const { stages, timelines, t } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<typeof action>();
   const shopify = useAppBridge();
   const [selected, setSelected] = useState<string[]>([]);
@@ -104,7 +110,7 @@ export default function Index() {
       { _action: "updateStage", stageKey: bulkStage, ids: selected.join(",") },
       { method: "POST" },
     );
-    shopify.toast.show(`${selected.length}건 상태를 변경했습니다`);
+    shopify.toast.show(t.toastBulkUpdated(selected.length));
     setSelected([]);
   };
 
@@ -117,27 +123,27 @@ export default function Index() {
 
   const syncOrders = () => {
     fetcher.submit({ _action: "syncOrders" }, { method: "POST" });
-    shopify.toast.show("최근 주문을 불러오는 중...");
+    shopify.toast.show(t.toastSyncing);
   };
 
   return (
-    <s-page heading="PackPost">
+    <s-page heading={t.heading}>
       <s-button slot="primary-action" onClick={syncOrders} {...(isBusy ? { loading: true } : {})}>
-        최근 주문 불러오기
+        {t.syncOrders}
       </s-button>
 
-      <s-section heading="투명한 배송 현황 공유">
+      <s-section heading={t.introHeading}>
         <s-paragraph>
-          이 앱은 실시간 배송 추적이 아니라, <s-text type="strong">셀러가 직접 입력하는</s-text> 배송
-          현황 공유 도구입니다. 아래에서 주문을 선택해 단계를 갱신하면 구매자
-          주문 페이지의 타임라인에 즉시 반영됩니다.
+          {t.introBefore}
+          <s-text type="strong">{t.introStrong}</s-text>
+          {t.introAfter}
         </s-paragraph>
       </s-section>
 
-      <s-section heading="일괄 상태 변경">
+      <s-section heading={t.bulkHeading}>
         <s-stack direction="inline" gap="base">
           <s-select
-            label="변경할 단계"
+            label={t.bulkSelectLabel}
             value={bulkStage}
             onChange={(e: Event) =>
               setBulkStage((e.currentTarget as HTMLSelectElement).value)
@@ -154,22 +160,19 @@ export default function Index() {
             disabled={selected.length === 0}
             {...(isBusy ? { loading: true } : {})}
           >
-            선택한 {selected.length}건 변경
+            {t.bulkApply(selected.length)}
           </s-button>
         </s-stack>
       </s-section>
 
-      <s-section heading={`주문 목록 (${timelines.length})`}>
+      <s-section heading={t.ordersHeading(timelines.length)}>
         {timelines.length === 0 ? (
-          <s-paragraph>
-            아직 주문 타임라인이 없습니다. 새 주문이 들어오면 자동으로
-            추가되고, 기존 주문은 &ldquo;최근 주문 불러오기&rdquo;로 가져올 수 있습니다.
-          </s-paragraph>
+          <s-paragraph>{t.ordersEmpty}</s-paragraph>
         ) : (
           <s-stack direction="block" gap="small">
-            {timelines.map((t) => (
+            {timelines.map((timeline) => (
               <s-box
-                key={t.id}
+                key={timeline.id}
                 padding="base"
                 borderWidth="base"
                 borderRadius="base"
@@ -177,17 +180,17 @@ export default function Index() {
                 <s-stack direction="inline" gap="base" alignItems="center">
                   <input
                     type="checkbox"
-                    checked={selected.includes(t.id)}
-                    onChange={() => toggle(t.id)}
+                    checked={selected.includes(timeline.id)}
+                    onChange={() => toggle(timeline.id)}
                   />
-                  <s-text type="strong">{t.orderName}</s-text>
-                  <s-text color="subdued">{t.customerEmail ?? "이메일 없음"}</s-text>
+                  <s-text type="strong">{timeline.orderName}</s-text>
+                  <s-text color="subdued">{timeline.customerEmail ?? t.noEmail}</s-text>
                   <s-select
-                    label="단계"
+                    label={t.stageLabel}
                     labelAccessibilityVisibility="exclusive"
-                    value={t.currentStage}
+                    value={timeline.currentStage}
                     onChange={(e: Event) =>
-                      applySingle(t.id, (e.currentTarget as HTMLSelectElement).value)
+                      applySingle(timeline.id, (e.currentTarget as HTMLSelectElement).value)
                     }
                   >
                     {stages.map((s) => (
@@ -197,7 +200,7 @@ export default function Index() {
                     ))}
                   </s-select>
                   <s-text color="subdued">
-                    최근 갱신: {new Date(t.updatedAt).toLocaleString("ko-KR")}
+                    {t.lastUpdated(new Date(timeline.updatedAt).toLocaleString(t.dateLocale))}
                   </s-text>
                 </s-stack>
               </s-box>
@@ -206,18 +209,13 @@ export default function Index() {
         )}
       </s-section>
 
-      <s-section slot="aside" heading="단계 커스터마이징">
-        <s-paragraph>
-          상품군에 맞게 단계를 추가/삭제/이름 변경할 수 있습니다.
-        </s-paragraph>
-        <s-link href="/app/settings">단계 설정으로 이동</s-link>
+      <s-section slot="aside" heading={t.customizeHeading}>
+        <s-paragraph>{t.customizeBody}</s-paragraph>
+        <s-link href="/app/settings">{t.customizeLink}</s-link>
       </s-section>
 
-      <s-section slot="aside" heading="구매자에게 보이는 문구">
-        <s-paragraph color="subdued">
-          &ldquo;이 정보는 판매자가 직접 입력한 참고용 안내이며, 실시간 위치 추적
-          정보가 아닙니다.&rdquo; — 위젯에 항상 함께 표시됩니다.
-        </s-paragraph>
+      <s-section slot="aside" heading={t.buyerNoticeHeading}>
+        <s-paragraph color="subdued">{t.buyerNoticeBody}</s-paragraph>
       </s-section>
     </s-page>
   );

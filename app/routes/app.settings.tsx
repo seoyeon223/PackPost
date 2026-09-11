@@ -10,11 +10,13 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import { getOrCreateShop, getStages, type Stage } from "../models/timeline.server";
+import { getSettingsMessages, resolveLocale } from "../i18n.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
-  const shop = await getOrCreateShop(session.shop);
-  return { stages: getStages(shop) };
+  const locale = resolveLocale(request.headers.get("accept-language"));
+  const shop = await getOrCreateShop(session.shop, locale);
+  return { stages: getStages(shop), t: getSettingsMessages(locale) };
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -45,7 +47,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function Settings() {
-  const { stages: initialStages } = useLoaderData<typeof loader>();
+  const { stages: initialStages, t } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<typeof action>();
   const shopify = useAppBridge();
   const [stages, setStages] = useState<Stage[]>(initialStages);
@@ -78,20 +80,17 @@ export default function Settings() {
       { stages: JSON.stringify(stages) },
       { method: "POST" },
     );
-    shopify.toast.show("저장되었습니다");
+    shopify.toast.show(t.toastSaved);
   };
 
   return (
-    <s-page heading="배송 단계 설정">
+    <s-page heading={t.heading}>
       <s-button slot="primary-action" onClick={save}>
-        저장
+        {t.save}
       </s-button>
 
-      <s-section heading="타임라인 단계 편집">
-        <s-paragraph color="subdued">
-          상품군에 맞게 단계를 추가/삭제/순서 변경하세요. 예를 들어 국내
-          배송만 하는 셀러는 &ldquo;통관중&rdquo; 단계를 삭제할 수 있습니다.
-        </s-paragraph>
+      <s-section heading={t.editHeading}>
+        <s-paragraph color="subdued">{t.editBody}</s-paragraph>
         <s-stack direction="block" gap="small">
           {stages.map((s, i) => (
             <s-stack
@@ -101,7 +100,7 @@ export default function Settings() {
               alignItems="center"
             >
               <s-text-field
-                label={`단계 ${i + 1}`}
+                label={t.stageFieldLabel(i + 1)}
                 labelAccessibilityVisibility="exclusive"
                 value={s.label}
                 onChange={(e: Event) =>
@@ -113,14 +112,14 @@ export default function Settings() {
                 onClick={() => move(i, -1)}
                 disabled={i === 0}
               >
-                위로
+                {t.moveUp}
               </s-button>
               <s-button
                 variant="tertiary"
                 onClick={() => move(i, 1)}
                 disabled={i === stages.length - 1}
               >
-                아래로
+                {t.moveDown}
               </s-button>
               <s-button
                 variant="tertiary"
@@ -128,22 +127,18 @@ export default function Settings() {
                 onClick={() => removeStage(i)}
                 disabled={stages.length <= 1}
               >
-                삭제
+                {t.delete}
               </s-button>
             </s-stack>
           ))}
         </s-stack>
         <s-button variant="secondary" onClick={addStage}>
-          + 단계 추가
+          {t.addStage}
         </s-button>
       </s-section>
 
-      <s-section slot="aside" heading="법적 안내">
-        <s-paragraph color="subdued">
-          이 단계 정보는 셀러가 직접 입력하는 참고용 안내입니다. 실제
-          운송장번호/택배사 조회는 Shopify 주문 상태 페이지에 별도로 항상
-          함께 표시되며, 이 설정으로 대체되지 않습니다.
-        </s-paragraph>
+      <s-section slot="aside" heading={t.legalHeading}>
+        <s-paragraph color="subdued">{t.legalBody}</s-paragraph>
       </s-section>
     </s-page>
   );

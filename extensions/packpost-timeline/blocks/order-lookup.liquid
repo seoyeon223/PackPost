@@ -4,21 +4,46 @@
   (same-origin, no API key needed). Renders nothing tracked in real time —
   every step shown here was typed in by the seller.
 {% endcomment %}
-<div class="goods-timeline" data-proxy-path="/apps/{{ block.settings.proxy_subpath | default: 'packpost' }}/status">
+{% assign lang = 'ko' %}
+{% if localization.language.iso_code == 'en' %}
+  {% assign lang = 'en' %}
+{% endif %}
+
+<div
+  class="goods-timeline"
+  data-proxy-path="/apps/{{ block.settings.proxy_subpath | default: 'packpost' }}/status"
+  data-lang="{{ lang }}"
+>
   <form class="goods-timeline__form">
     <div class="goods-timeline__field">
-      <label for="goods-timeline-order-{{ block.id }}">주문번호</label>
-      <input
-        id="goods-timeline-order-{{ block.id }}"
-        type="text"
-        name="order"
-        inputmode="numeric"
-        placeholder="예: 1001"
-        required
-      />
+      {% if lang == 'en' %}
+        <label for="goods-timeline-order-{{ block.id }}">Order number</label>
+        <input
+          id="goods-timeline-order-{{ block.id }}"
+          type="text"
+          name="order"
+          inputmode="numeric"
+          placeholder="e.g. 1001"
+          required
+        />
+      {% else %}
+        <label for="goods-timeline-order-{{ block.id }}">주문번호</label>
+        <input
+          id="goods-timeline-order-{{ block.id }}"
+          type="text"
+          name="order"
+          inputmode="numeric"
+          placeholder="예: 1001"
+          required
+        />
+      {% endif %}
     </div>
     <div class="goods-timeline__field">
-      <label for="goods-timeline-email-{{ block.id }}">주문 시 입력한 이메일</label>
+      {% if lang == 'en' %}
+        <label for="goods-timeline-email-{{ block.id }}">Email used on the order</label>
+      {% else %}
+        <label for="goods-timeline-email-{{ block.id }}">주문 시 입력한 이메일</label>
+      {% endif %}
       <input
         id="goods-timeline-email-{{ block.id }}"
         type="email"
@@ -27,16 +52,24 @@
         required
       />
     </div>
-    <button type="submit">배송 현황 조회</button>
+    <button type="submit">
+      {% if lang == 'en' %}Check delivery status{% else %}배송 현황 조회{% endif %}
+    </button>
   </form>
 
   <p class="goods-timeline__error" hidden></p>
   <div class="goods-timeline__result" hidden>
     <ol class="goods-timeline__steps"></ol>
     <p class="goods-timeline__disclaimer">
-      이 정보는 판매자가 직접 입력한 참고용 안내이며, 실시간 위치 추적
-      정보가 아닙니다. 정확한 운송장 조회는 주문 확인 메일의 배송사 링크를
-      이용해 주세요.
+      {% if lang == 'en' %}
+        This information was entered manually by the seller and is not
+        real-time location tracking. For the official tracking number, please
+        use the carrier link from your order confirmation email.
+      {% else %}
+        이 정보는 판매자가 직접 입력한 참고용 안내이며, 실시간 위치 추적
+        정보가 아닙니다. 정확한 운송장 조회는 주문 확인 메일의 배송사 링크를
+        이용해 주세요.
+      {% endif %}
     </p>
   </div>
 </div>

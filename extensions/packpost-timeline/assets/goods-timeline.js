@@ -1,16 +1,31 @@
 (function () {
   "use strict";
 
+  var MESSAGES = {
+    ko: {
+      checking: "조회 중...",
+      notFound: "주문 정보를 찾을 수 없습니다. 주문번호와 이메일을 다시 확인해 주세요.",
+      historyHeading: "업데이트 내역",
+      dateLocale: "ko-KR",
+    },
+    en: {
+      checking: "Checking...",
+      notFound: "We couldn't find that order. Please double-check the order number and email.",
+      historyHeading: "Update history",
+      dateLocale: "en-US",
+    },
+  };
+
   function escapeHtml(value) {
     var div = document.createElement("div");
     div.textContent = value == null ? "" : String(value);
     return div.innerHTML;
   }
 
-  function formatDate(iso) {
+  function formatDate(iso, dateLocale) {
     try {
       var d = new Date(iso);
-      return d.toLocaleString("ko-KR", {
+      return d.toLocaleString(dateLocale, {
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
@@ -22,7 +37,7 @@
     }
   }
 
-  function renderSteps(container, data) {
+  function renderSteps(container, data, t) {
     var stages = data.stages || [];
     var currentIndex = stages.findIndex(function (s) {
       return s.key === data.currentStage;
@@ -61,7 +76,7 @@
         return (
           '<li class="goods-timeline__history-item">' +
           '<span class="goods-timeline__history-date">' +
-          formatDate(u.at) +
+          formatDate(u.at, t.dateLocale) +
           "</span>" +
           '<span class="goods-timeline__history-label">' +
           escapeHtml(label) +
@@ -79,6 +94,9 @@
   }
 
   function init(root) {
+    var lang = root.getAttribute("data-lang") === "en" ? "en" : "ko";
+    var t = MESSAGES[lang];
+
     var form = root.querySelector(".goods-timeline__form");
     var resultEl = root.querySelector(".goods-timeline__result");
     var errorEl = root.querySelector(".goods-timeline__error");
@@ -89,7 +107,9 @@
     if (resultEl && !resultEl.querySelector(".goods-timeline__history")) {
       var historyWrap = document.createElement("div");
       historyWrap.innerHTML =
-        '<h4 class="goods-timeline__history-heading">업데이트 내역</h4>' +
+        '<h4 class="goods-timeline__history-heading">' +
+        escapeHtml(t.historyHeading) +
+        "</h4>" +
         '<ul class="goods-timeline__history"></ul>';
       resultEl.appendChild(historyWrap);
     }
@@ -103,7 +123,7 @@
       var submitButton = form.querySelector("button[type=submit]");
       var originalLabel = submitButton.textContent;
       submitButton.disabled = true;
-      submitButton.textContent = "조회 중...";
+      submitButton.textContent = t.checking;
       errorEl.hidden = true;
       resultEl.hidden = true;
 
@@ -120,12 +140,11 @@
           return res.json();
         })
         .then(function (data) {
-          renderSteps(root, data);
+          renderSteps(root, data, t);
           resultEl.hidden = false;
         })
         .catch(function () {
-          errorEl.textContent =
-            "주문 정보를 찾을 수 없습니다. 주문번호와 이메일을 다시 확인해 주세요.";
+          errorEl.textContent = t.notFound;
           errorEl.hidden = false;
         })
         .finally(function () {

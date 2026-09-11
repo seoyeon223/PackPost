@@ -1,11 +1,12 @@
 import prisma from "../db.server";
+import { resolveLocale, type Locale } from "../i18n.server";
 
 export type Stage = { key: string; label: string };
 
 // Default steps cover the common K-pop goods flow: local pack-out, international
 // leg, customs, then domestic last-mile. Sellers can rename/reorder/trim these
 // per-shop from the Settings page (e.g. domestic-only sellers drop customs).
-export const DEFAULT_STAGES: Stage[] = [
+export const DEFAULT_STAGES_KO: Stage[] = [
   { key: "payment_confirmed", label: "결제 확인" },
   { key: "preparing", label: "상품 준비중" },
   { key: "packed", label: "포장 완료" },
@@ -17,14 +18,41 @@ export const DEFAULT_STAGES: Stage[] = [
   { key: "delivered", label: "배송 완료" },
 ];
 
-export async function getOrCreateShop(shopDomain: string) {
+export const DEFAULT_STAGES_EN: Stage[] = [
+  { key: "payment_confirmed", label: "Payment confirmed" },
+  { key: "preparing", label: "Preparing order" },
+  { key: "packed", label: "Packed" },
+  { key: "shipped_overseas", label: "Shipped from origin" },
+  { key: "in_transit", label: "In transit internationally" },
+  { key: "customs", label: "Customs clearance" },
+  { key: "arrived_domestic", label: "Arrived in destination country" },
+  { key: "out_for_delivery", label: "Out for local delivery" },
+  { key: "delivered", label: "Delivered" },
+];
+
+export const DEFAULT_STAGES = DEFAULT_STAGES_KO;
+
+export function getDefaultStages(locale: Locale): Stage[] {
+  return locale === "en" ? DEFAULT_STAGES_EN : DEFAULT_STAGES_KO;
+}
+
+async function inferShopLocale(shopDomain: string): Promise<Locale> {
+  const session = await prisma.session.findFirst({
+    where: { shop: shopDomain },
+    orderBy: { id: "desc" },
+  });
+  return resolveLocale(session?.locale);
+}
+
+export async function getOrCreateShop(shopDomain: string, locale?: Locale) {
   const existing = await prisma.shop.findUnique({ where: { shopDomain } });
   if (existing) return existing;
 
+  const resolvedLocale = locale ?? (await inferShopLocale(shopDomain));
   return prisma.shop.create({
     data: {
       shopDomain,
-      stages: DEFAULT_STAGES,
+      stages: getDefaultStages(resolvedLocale),
     },
   });
 }

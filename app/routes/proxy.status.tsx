@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
-import { findPublicTimeline } from "../models/timeline.server";
+import { findPublicTimeline, logLookupMiss } from "../models/timeline.server";
 
 // Reached via Shopify App Proxy at https://<shop-domain>/apps/packpost/status
 // (same-origin from the storefront's point of view, so no CORS/API key needed).
@@ -26,6 +26,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   });
 
   if (!result) {
+    await logLookupMiss(session.shop, orderName, email);
     return Response.json({ error: "not_found" }, { status: 404 });
   }
 

@@ -151,6 +151,28 @@ export async function purgeExpiredTimelines(now = new Date()) {
   return count;
 }
 
+// Temporary diagnostic for a lookup miss — logs server-side only (Render logs),
+// never returned to the caller, so it doesn't leak whether an order exists.
+export async function logLookupMiss(
+  shopDomain: string,
+  rawOrderName: string,
+  attemptedEmail: string,
+) {
+  const orderName = normalizeOrderName(rawOrderName);
+  const shop = await prisma.shop.findUnique({ where: { shopDomain } });
+  const byName = await prisma.orderTimeline.findFirst({
+    where: { shopDomain, orderName },
+  });
+  console.log("[packpost] lookup miss", {
+    shopDomain,
+    shopExists: !!shop,
+    normalizedOrderName: orderName,
+    orderExists: !!byName,
+    storedEmail: byName?.customerEmail ?? null,
+    attemptedEmail,
+  });
+}
+
 export async function setStage(params: {
   orderTimelineId: string;
   stageKey: string;

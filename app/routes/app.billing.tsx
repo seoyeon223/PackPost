@@ -3,7 +3,7 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { useFetcher, useLoaderData } from "react-router";
+import { Form, useFetcher, useLoaderData } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate, BILLING_TEST_MODE, PRO_PLAN } from "../shopify.server";
@@ -64,11 +64,6 @@ export default function Billing() {
   const fetcher = useFetcher<typeof action>();
   const shopify = useAppBridge();
 
-  const upgrade = () => {
-    fetcher.submit({ _action: "upgrade" }, { method: "POST" });
-    shopify.toast.show(t.toastUpgraded);
-  };
-
   const cancel = () => {
     if (!window.confirm(t.confirmCancel)) return;
     fetcher.submit({ _action: "cancel" }, { method: "POST" });
@@ -84,7 +79,13 @@ export default function Billing() {
             {t.cancelButton}
           </s-button>
         ) : (
-          <s-button onClick={upgrade}>{t.upgradeButton}</s-button>
+          // A real form submission (not fetcher.submit/fetch) so the browser
+          // follows Shopify's billing-approval redirect chain as a genuine
+          // top-level navigation instead of it being swallowed by JS.
+          <Form method="post">
+            <input type="hidden" name="_action" value="upgrade" />
+            <s-button type="submit">{t.upgradeButton}</s-button>
+          </Form>
         )}
       </s-section>
 

@@ -10,10 +10,6 @@ import prisma from "./db.server";
 
 export const PRO_PLAN = "PackPost Pro";
 
-// Dev/test stores can only ever be charged in test mode anyway, but this flag
-// lets us keep isTest explicit and flip it off deliberately before launch.
-export const BILLING_TEST_MODE = process.env.BILLING_TEST_MODE !== "false";
-
 const shopify = shopifyApp({
   apiKey: process.env.SHOPIFY_API_KEY,
   apiSecretKey: process.env.SHOPIFY_API_SECRET || "",

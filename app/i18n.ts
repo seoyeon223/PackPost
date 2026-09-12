@@ -143,34 +143,26 @@ const billing = {
     currentPlanHeading: "현재 플랜",
     currentFree: "Free 플랜 — 월 50건까지 무료",
     currentPro: "Pro 플랜 — 주문 수 제한 없음",
-    upgradeButton: "Pro로 업그레이드 ($6.99/월)",
-    cancelButton: "Pro 구독 해지",
-    confirmCancel:
-      "Pro 구독을 해지할까요? 다음 결제 주기부터 Free 플랜(월 50건 제한)으로 전환됩니다.",
+    managedPricingNote:
+      "플랜 변경은 Shopify 앱 관리 화면에서 할 수 있습니다 — 이 페이지는 현재 플랜 확인용입니다.",
     plansHeading: "플랜 비교",
     freePlanTitle: "Free — $0/월",
     freePlanBody: "월 50건까지 주문 추적, 커스텀 단계, 스토어프론트 위젯. 위젯에 \"Powered by PackPost\" 배지가 표시됩니다.",
     proPlanTitle: "Pro — $6.99/월",
     proPlanBody: "주문 수 제한 없음, 위젯 배지 제거.",
-    toastUpgraded: "결제 페이지로 이동합니다...",
-    toastCancelled: "Pro 구독을 해지했습니다",
   },
   en: {
     heading: "Billing",
     currentPlanHeading: "Current plan",
     currentFree: "Free plan — up to 50 orders/month",
     currentPro: "Pro plan — no order limit",
-    upgradeButton: "Upgrade to Pro ($6.99/month)",
-    cancelButton: "Cancel Pro subscription",
-    confirmCancel:
-      "Cancel your Pro subscription? You'll move to the Free plan (50 orders/month) at the end of the current billing cycle.",
+    managedPricingNote:
+      "Change your plan from Shopify's app management screen — this page just shows your current plan.",
     plansHeading: "Compare plans",
     freePlanTitle: "Free — $0/month",
     freePlanBody: 'Track up to 50 orders/month, custom stages, storefront widget. The widget shows a "Powered by PackPost" badge.',
     proPlanTitle: "Pro — $6.99/month",
     proPlanBody: "No order limit, badge removed.",
-    toastUpgraded: "Redirecting to checkout...",
-    toastCancelled: "Your Pro subscription was cancelled",
   },
 } as const;
 

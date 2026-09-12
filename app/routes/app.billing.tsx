@@ -1,15 +1,17 @@
-import type {
-  ActionFunctionArgs,
-  HeadersFunction,
-  LoaderFunctionArgs,
-} from "react-router";
-import { useFetcher, useLoaderData } from "react-router";
-import { useAppBridge } from "@shopify/app-bridge-react";
+import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
+import { useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
-import { authenticate, BILLING_TEST_MODE, PRO_PLAN } from "../shopify.server";
+import { authenticate, PRO_PLAN } from "../shopify.server";
 import db from "../db.server";
 import { getBillingMessages, resolveLocale } from "../i18n";
 
+// This app is listed with Shopify-managed pricing plans (required for the
+// App Store listing), so Shopify — not this app — owns plan selection and
+// charge creation; calling billing.request()/billing.cancel() ourselves is
+// rejected once public plans exist. This page only reads the current plan
+// (billing.check() still works for that) to drive the free-tier order cap
+// and the storefront widget's badge; merchants change plans through
+// Shopify's own plan management screen.
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session, billing } = await authenticate.admin(request);
   const locale = resolveLocale(request.headers.get("accept-language"));
@@ -25,64 +27,15 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return { locale, plan };
 };
 
-export const action = async ({ request }: ActionFunctionArgs) => {
-  const { session, billing } = await authenticate.admin(request);
-  const formData = await request.formData();
-  const intent = formData.get("_action");
-
-  if (intent === "cancel") {
-    const { appSubscriptions } = await billing.check({ plans: [PRO_PLAN] });
-    const subscription = appSubscriptions[0];
-    if (subscription) {
-      await billing.cancel({
-        subscriptionId: subscription.id,
-        isTest: BILLING_TEST_MODE,
-        prorate: true,
-      });
-    }
-    await db.shop.update({
-      where: { shopDomain: session.shop },
-      data: { plan: "free", hideBranding: false },
-    });
-    return { ok: true };
-  }
-
-  return { ok: false };
-};
-
 export default function Billing() {
   const { plan, locale } = useLoaderData<typeof loader>();
   const t = getBillingMessages(locale);
-  const fetcher = useFetcher<typeof action>();
-  const shopify = useAppBridge();
-
-  const cancel = () => {
-    if (!window.confirm(t.confirmCancel)) return;
-    fetcher.submit({ _action: "cancel" }, { method: "POST" });
-    shopify.toast.show(t.toastCancelled);
-  };
-
-  const upgrade = () => {
-    // Both a POST (fetcher/Form) and a plain href link end up going through
-    // the embedded app's own client-side navigation, which fetches this as
-    // `.data` and then tries to follow billing.request()'s cross-origin
-    // redirect via fetch — which fails (401) because it's not a real
-    // top-level browser navigation. Setting window.top.location directly
-    // bypasses all of that click/navigation interception.
-    window.top!.location.href = `${window.location.origin}/app/billing/upgrade`;
-  };
 
   return (
     <s-page heading={t.heading}>
       <s-section heading={t.currentPlanHeading}>
         <s-paragraph>{plan === "pro" ? t.currentPro : t.currentFree}</s-paragraph>
-        {plan === "pro" ? (
-          <s-button variant="tertiary" tone="critical" onClick={cancel}>
-            {t.cancelButton}
-          </s-button>
-        ) : (
-          <s-button onClick={upgrade}>{t.upgradeButton}</s-button>
-        )}
+        <s-paragraph color="subdued">{t.managedPricingNote}</s-paragraph>
       </s-section>
 
       <s-section heading={t.plansHeading}>

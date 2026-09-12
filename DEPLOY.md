@@ -59,7 +59,6 @@ npm run dev                  # shopify app dev — 개발 스토어에 임시 �
    - `SHOPIFY_API_KEY`, `SHOPIFY_API_SECRET`, `SCOPES=read_orders`
    - `DATABASE_URL` = Neon `production` 브랜치의 pooled connection string
    - `NODE_ENV=production`
-   - `BILLING_TEST_MODE=true` — Pro 구독 결제를 실제로 받을 준비가 될 때까지는 `true`로 유지 (실제 카드 청구를 막는 테스트 모드). 개발 스토어는 어차피 테스트 결제만 가능합니다.
    - `SHOPIFY_APP_URL`은 일단 비워두고 배포 먼저 진행 (URL을 받은 뒤 다음 단계에서 채움)
 6. **Create Web Service**로 첫 배포 실행 → 완료되면 `https://<서비스이름>.onrender.com` 형태의 URL이 발급됩니다.
 7. 이 URL을 아래 세 곳에 반영합니다:
@@ -88,11 +87,11 @@ npm run deploy   # shopify app deploy — webhook 구독 + 테마 익스텐션�
    - Request Headers에 `x-cleanup-secret: <생성한 값>` 추가
 4. `/internal/cleanup`은 헤더의 시크릿이 일치할 때만 동작하며, `updatedAt` 기준 24개월이 지난 `OrderTimeline`(및 연결된 `StageUpdate` 이력)을 삭제합니다. 보관 기간을 바꾸려면 [app/models/timeline.server.ts](app/models/timeline.server.ts)의 `RETENTION_MONTHS` 값을 수정하세요.
 
-## 8. 요금제 (Billing API)
+## 8. 요금제 (Shopify Managed Pricing)
 - Free: 월 50건 주문까지, 위젯에 "Powered by PackPost" 배지
 - Pro: $6.99/월, 주문 수 제한 없음, 배지 제거
-- 관리자 화면의 **요금제** 메뉴(`/app/billing`)에서 업그레이드/해지 가능
-- 실제 결제를 받을 준비가 되면 Render 환경변수 `BILLING_TEST_MODE`를 `false`로 바꾸고 재배포하세요. 그 전까지는 테스트 결제만 발생합니다 (실제 카드 청구 없음).
+- Partner 대시보드의 Pricing 섹션에 이 두 plan을 **public plan으로 등록해야 앱스토어 리스팅이 통과됩니다.** public plan이 하나라도 등록되면 앱이 자동으로 "Shopify App Pricing"(관리형) 모드가 되어, 앱이 직접 `billing.request()`/`billing.cancel()`을 호출하는 게 막힙니다 — 그래서 플랜 업그레이드/해지는 앱 코드가 아니라 Shopify의 자체 플랜 관리 화면에서 이루어집니다.
+- 관리자 화면의 **요금제** 메뉴(`/app/billing`)는 `billing.check()`로 현재 플랜만 읽어서 보여주는 용도입니다 (주문 한도/배지 제거 여부를 여기서 판단).
 
 ## 참고
 - Neon compute가 idle 후 첫 요청은 1~2초 느릴 수 있습니다 (무료 티어 특성) — 초기 트래픽에서는 무시 가능한 수준입니다.

@@ -3,7 +3,7 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { Form, useFetcher, useLoaderData } from "react-router";
+import { useFetcher, useLoaderData } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { authenticate, BILLING_TEST_MODE, PRO_PLAN } from "../shopify.server";
@@ -29,14 +29,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const { session, billing } = await authenticate.admin(request);
   const formData = await request.formData();
   const intent = formData.get("_action");
-
-  if (intent === "upgrade") {
-    return billing.request({
-      plan: PRO_PLAN,
-      isTest: BILLING_TEST_MODE,
-      returnUrl: `${process.env.SHOPIFY_APP_URL}/app/billing`,
-    });
-  }
 
   if (intent === "cancel") {
     const { appSubscriptions } = await billing.check({ plans: [PRO_PLAN] });
@@ -79,15 +71,12 @@ export default function Billing() {
             {t.cancelButton}
           </s-button>
         ) : (
-          // reloadDocument forces an actual full-page form submission —
-          // without it, React Router still posts to /app/billing.data via
-          // fetch(), which can't carry cookies through Shopify's
-          // cross-origin billing-approval redirect the way a real browser
-          // navigation does (that fetch was coming back 401).
-          <Form method="post" reloadDocument>
-            <input type="hidden" name="_action" value="upgrade" />
-            <s-button type="submit">{t.upgradeButton}</s-button>
-          </Form>
+          // A plain link (GET), not a form POST — billing.request() throws a
+          // redirect to Shopify's charge-confirmation page, and React Router
+          // hard-navigates the browser for that external redirect target
+          // instead of trying to fetch it, which is what a POST via
+          // fetcher.submit or <Form> kept breaking on (see app.billing.upgrade.tsx).
+          <s-button href="/app/billing/upgrade">{t.upgradeButton}</s-button>
         )}
       </s-section>
 

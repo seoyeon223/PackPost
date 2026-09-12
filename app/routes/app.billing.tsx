@@ -62,6 +62,16 @@ export default function Billing() {
     shopify.toast.show(t.toastCancelled);
   };
 
+  const upgrade = () => {
+    // Both a POST (fetcher/Form) and a plain href link end up going through
+    // the embedded app's own client-side navigation, which fetches this as
+    // `.data` and then tries to follow billing.request()'s cross-origin
+    // redirect via fetch — which fails (401) because it's not a real
+    // top-level browser navigation. Setting window.top.location directly
+    // bypasses all of that click/navigation interception.
+    window.top!.location.href = `${window.location.origin}/app/billing/upgrade`;
+  };
+
   return (
     <s-page heading={t.heading}>
       <s-section heading={t.currentPlanHeading}>
@@ -71,12 +81,7 @@ export default function Billing() {
             {t.cancelButton}
           </s-button>
         ) : (
-          // A plain link (GET), not a form POST — billing.request() throws a
-          // redirect to Shopify's charge-confirmation page, and React Router
-          // hard-navigates the browser for that external redirect target
-          // instead of trying to fetch it, which is what a POST via
-          // fetcher.submit or <Form> kept breaking on (see app.billing.upgrade.tsx).
-          <s-button href="/app/billing/upgrade">{t.upgradeButton}</s-button>
+          <s-button onClick={upgrade}>{t.upgradeButton}</s-button>
         )}
       </s-section>
 

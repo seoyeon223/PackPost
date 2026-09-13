@@ -18,6 +18,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     customer?: { email?: string | null } | null;
   };
 
+  // Temporary diagnostic for the App Store review's "order information not
+  // found" rejection — confirms whether the email fields are genuinely empty
+  // in the webhook payload (e.g. Protected Customer Data not yet approved)
+  // versus some other bug. Presence-only (no PII in logs). Remove once the
+  // storefront widget is confirmed working end-to-end.
+  console.log("[packpost] orders/create email field presence", {
+    shop,
+    orderName: order.name,
+    hasEmail: Boolean(order.email),
+    hasContactEmail: Boolean(order.contact_email),
+    hasCustomerEmail: Boolean(order.customer?.email),
+  });
+
   await ensureOrderTimeline({
     shopDomain: shop,
     shopifyOrderId: String(order.id),

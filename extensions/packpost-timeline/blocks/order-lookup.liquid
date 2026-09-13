@@ -4,8 +4,9 @@
   (same-origin, no API key needed). Renders nothing tracked in real time —
   every step shown here was typed in by the seller.
 {% endcomment %}
+{% assign lang_code = localization.language.iso_code | downcase | split: '-' | first %}
 {% assign lang = 'ko' %}
-{% if localization.language.iso_code == 'en' %}
+{% if lang_code == 'en' %}
   {% assign lang = 'en' %}
 {% endif %}
 

@@ -43,6 +43,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   });
   const monthlyCount = await countMonthlyTimelines(session.shop);
 
+  // Deep link into the theme editor with the order-lookup app block ready to
+  // add, per Shopify's theme app extension onboarding guidance — see
+  // https://shopify.dev/docs/apps/build/online-store/theme-app-extensions/configuration#app-block-deep-linking
+  const themeEditorUrl = `https://${session.shop}/admin/themes/current/editor?template=index&addAppBlockId=${process.env.SHOPIFY_API_KEY}/order-lookup&target=newAppsSection`;
+
   return {
     stages: getStages(shop),
     timelines,
@@ -52,6 +57,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     // Locale only — getDashboardMessages() has function values (e.g. bulkApply),
     // and loader data is JSON-serialized, so functions can't survive the trip.
     locale,
+    themeEditorUrl,
   };
 };
 
@@ -128,7 +134,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function Index() {
-  const { stages, timelines, plan, monthlyCount, limit, locale } =
+  const { stages, timelines, plan, monthlyCount, limit, locale, themeEditorUrl } =
     useLoaderData<typeof loader>();
   const t = getDashboardMessages(locale);
   const fetcher = useFetcher<typeof action>();
@@ -311,6 +317,13 @@ export default function Index() {
       <s-section slot="aside" heading={t.customizeHeading}>
         <s-paragraph>{t.customizeBody}</s-paragraph>
         <s-link href="/app/settings">{t.customizeLink}</s-link>
+      </s-section>
+
+      <s-section slot="aside" heading={t.widgetSetupHeading}>
+        <s-paragraph>{t.widgetSetupBody}</s-paragraph>
+        <s-link href={themeEditorUrl} target="_blank">
+          {t.widgetSetupLink}
+        </s-link>
       </s-section>
 
       <s-section slot="aside" heading={t.buyerNoticeHeading}>

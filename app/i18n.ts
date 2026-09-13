@@ -52,6 +52,10 @@ const dashboard = {
     toastSyncSkipped: (skipped: number) =>
       `무료 한도 초과로 ${skipped}건은 추적하지 못했습니다. Pro로 업그레이드해주세요.`,
     dateLocale: "ko-KR",
+    widgetSetupHeading: "스토어프론트 위젯 추가하기",
+    widgetSetupBody:
+      "구매자가 주문번호로 배송 현황을 조회할 수 있는 위젯을 테마에 추가하세요. 테마 편집기에서 원하는 위치에 “PackPost 배송 타임라인” 블록을 추가하면 됩니다.",
+    widgetSetupLink: "테마 편집기에서 위젯 추가",
   },
   en: {
     heading: "PackPost",
@@ -94,6 +98,10 @@ const dashboard = {
     toastSyncSkipped: (skipped: number) =>
       `${skipped} order(s) weren't tracked because you're over the free limit. Please upgrade to Pro.`,
     dateLocale: "en-US",
+    widgetSetupHeading: "Add the storefront widget",
+    widgetSetupBody:
+      "Add the order lookup widget to your theme so buyers can check delivery status by order number. In the theme editor, add the \"PackPost Delivery Timeline\" block wherever you'd like it to appear.",
+    widgetSetupLink: "Add widget in theme editor",
   },
 } as const;
 

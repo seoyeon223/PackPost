@@ -141,10 +141,11 @@
 
       fetch(url, { headers: { Accept: "application/json" } })
         .then(function (res) {
-          if (!res.ok) throw new Error("not_found");
+          if (!res.ok) throw new Error("request_failed");
           return res.json();
         })
         .then(function (data) {
+          if (!data || data.error || !data.stages) throw new Error("not_found");
           renderSteps(root, data, t);
           resultEl.hidden = false;
         })

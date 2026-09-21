@@ -7,6 +7,26 @@ import {
   normalizeOrderName,
 } from "../models/timeline.server";
 
+type OrderNode = { id: string; name: string; email?: string | null };
+
+async function backfillFromOrder(
+  order: OrderNode,
+  params: { shopDomain: string; orderName: string; email: string },
+) {
+  const created = await ensureOrderTimeline({
+    shopDomain: params.shopDomain,
+    shopifyOrderId: order.id.split("/").pop()!,
+    orderName: order.name,
+    customerEmail: order.email ?? params.email,
+  });
+  if (!created) return null;
+  return findPublicTimeline({
+    shopDomain: params.shopDomain,
+    orderName: params.orderName,
+    email: params.email,
+  });
+}
+
 // Reached via Shopify App Proxy at https://<shop-domain>/apps/packpost/status
 // (same-origin from the storefront's point of view, so no CORS/API key needed).
 // authenticate.public.appProxy verifies Shopify's HMAC signature on the request.
@@ -68,29 +88,63 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       }
 
       const wantedName = normalizeOrderName(orderName);
-      const order = json.data?.orders?.edges?.[0]?.node as
-        | { id: string; name: string; email?: string | null }
-        | undefined;
+      const order = json.data?.orders?.edges?.[0]?.node as OrderNode | undefined;
 
       // Belt-and-suspenders: confirm the name matches exactly (the search
       // index can be fuzzy) before trusting the match.
       if (order && order.name === wantedName) {
-        const created = await ensureOrderTimeline({
-          shopDomain: session.shop,
-          shopifyOrderId: order.id.split("/").pop()!,
-          orderName: order.name,
-          customerEmail: order.email ?? email,
-        });
-        if (created) {
-          result = await findPublicTimeline({
-            shopDomain: session.shop,
-            orderName,
-            email,
-          });
-        }
+        result = await backfillFromOrder(order, { shopDomain: session.shop, orderName, email });
       }
     } catch (error) {
-      console.error("[packpost] live order lookup failed", error);
+      console.error("[packpost] live order lookup (search) failed", error);
+    }
+  }
+
+  // The `query:`-filtered search above goes through Shopify's search index,
+  // which can lag a few seconds/minutes behind order creation — exactly the
+  // "works after clicking 최근 주문 불러오기 but not before" symptom, since
+  // that button's unfiltered recent-orders list doesn't depend on the index.
+  // Mirror that button's approach here as a last resort: scan the most
+  // recent orders directly instead of searching.
+  if (!result) {
+    try {
+      const wantedName = normalizeOrderName(orderName);
+      const wantedEmail = email.trim().toLowerCase();
+      const response = await admin.graphql(
+        `#graphql
+          query RecentOrdersForLookup {
+            orders(first: 50, sortKey: CREATED_AT, reverse: true) {
+              edges {
+                node {
+                  id
+                  name
+                  email
+                }
+              }
+            }
+          }`,
+      );
+      const json = await response.json();
+      const graphqlErrors = (json as { errors?: unknown }).errors;
+      if (graphqlErrors) {
+        console.error("[packpost] order lookup GraphQL errors (recent scan)", graphqlErrors);
+      }
+
+      const nodes = (json.data?.orders?.edges ?? []).map(
+        (e: { node: OrderNode }) => e.node,
+      ) as OrderNode[];
+      const order = nodes.find(
+        (n) =>
+          n.name === wantedName &&
+          n.email &&
+          n.email.trim().toLowerCase() === wantedEmail,
+      );
+
+      if (order) {
+        result = await backfillFromOrder(order, { shopDomain: session.shop, orderName, email });
+      }
+    } catch (error) {
+      console.error("[packpost] live order lookup (recent scan) failed", error);
     }
   }
 

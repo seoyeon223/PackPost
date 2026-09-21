@@ -36,48 +36,69 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   // order is placed). Fall back to a live Admin API lookup so the widget
   // still works instead of depending on a prior sync.
   if (!result) {
-    const normalizedName = normalizeOrderName(orderName);
-    const response = await admin.graphql(
-      `#graphql
-        query FindOrderByName($query: String!) {
-          orders(first: 1, query: $query) {
-            edges {
-              node {
-                id
-                name
-                email
+    try {
+      // Order name search takes the bare number ("1001"); the "#" prefix (and
+      // any quoting) makes the search syntax unreliable across stores. The
+      // `email` filter is a real search field on Order (matches the order's
+      // contact email), so we can narrow to this buyer's order server-side
+      // without needing the `customer { ... }` field — that field requires
+      // the read_customers scope, which this app doesn't request.
+      const bareName = normalizeOrderName(orderName).replace(/^#/, "");
+      const escapedEmail = email.trim().replace(/"/g, '\\"');
+      const searchQuery = `name:${bareName} email:"${escapedEmail}"`;
+      const response = await admin.graphql(
+        `#graphql
+          query FindOrderByNameAndEmail($query: String!) {
+            orders(first: 1, query: $query) {
+              edges {
+                node {
+                  id
+                  name
+                  email
+                }
               }
             }
-          }
-        }`,
-      { variables: { query: `name:'${normalizedName}'` } },
-    );
-    const json = await response.json();
-    const order = json.data?.orders?.edges?.[0]?.node as
-      | { id: string; name: string; email?: string | null }
-      | undefined;
-
-    const orderEmail = order?.email?.trim().toLowerCase();
-    if (order && orderEmail && orderEmail === email.trim().toLowerCase()) {
-      const created = await ensureOrderTimeline({
-        shopDomain: session.shop,
-        shopifyOrderId: order.id.split("/").pop()!,
-        orderName: order.name,
-        customerEmail: order.email,
-      });
-      if (created) {
-        result = await findPublicTimeline({
-          shopDomain: session.shop,
-          orderName,
-          email,
-        });
+          }`,
+        { variables: { query: searchQuery } },
+      );
+      const json = await response.json();
+      const graphqlErrors = (json as { errors?: unknown }).errors;
+      if (graphqlErrors) {
+        console.error("[packpost] order lookup GraphQL errors", graphqlErrors);
       }
+
+      const wantedName = normalizeOrderName(orderName);
+      const order = json.data?.orders?.edges?.[0]?.node as
+        | { id: string; name: string; email?: string | null }
+        | undefined;
+
+      // Belt-and-suspenders: confirm the name matches exactly (the search
+      // index can be fuzzy) before trusting the match.
+      if (order && order.name === wantedName) {
+        const created = await ensureOrderTimeline({
+          shopDomain: session.shop,
+          shopifyOrderId: order.id.split("/").pop()!,
+          orderName: order.name,
+          customerEmail: order.email ?? email,
+        });
+        if (created) {
+          result = await findPublicTimeline({
+            shopDomain: session.shop,
+            orderName,
+            email,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("[packpost] live order lookup failed", error);
     }
   }
 
   if (!result) {
     await logLookupMiss(session.shop, orderName, email);
-    return Response.json({ error: "not_found" }, { status: 404 });
+    // 200 rather than 404: a wrong order/email is an expected outcome, not a
+    // server error, and the widget shouldn't surface a failed network request.
+    return Response.json({ error: "not_found" });
   }
 
   return Response.json(result);

@@ -7,8 +7,9 @@ import type {
 import { useFetcher, useLoaderData } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
-import { authenticate, PRO_PLAN } from "../shopify.server";
+import { authenticate } from "../shopify.server";
 import db from "../db.server";
+import { syncShopPlan } from "../models/billing.server";
 import {
   countMonthlyTimelines,
   ensureOrderTimeline,
@@ -20,21 +21,16 @@ import {
 import { getDashboardMessages, resolveLocale } from "../i18n";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session, billing } = await authenticate.admin(request);
+  const { session, admin, billing } = await authenticate.admin(request);
   const locale = resolveLocale(request.headers.get("accept-language"));
 
   const shop = await getOrCreateShop(session.shop, locale);
 
   // Keep our own plan flag in sync with Shopify's billing state — this is
-  // what gates the free monthly cap and the storefront widget's badge.
-  const { hasActivePayment } = await billing.check({ plans: [PRO_PLAN] });
-  const plan = hasActivePayment ? "pro" : "free";
-  if (shop.plan !== plan) {
-    await db.shop.update({
-      where: { shopDomain: session.shop },
-      data: { plan, hideBranding: hasActivePayment },
-    });
-  }
+  // what gates the free monthly cap and the storefront widget's badge. See
+  // models/billing.server.ts for why this is a Partner API call, not
+  // billing.check() (this app is on Shopify App Pricing).
+  const plan = await syncShopPlan({ shopDomain: session.shop, admin, billing });
 
   const timelines = await db.orderTimeline.findMany({
     where: { shopDomain: session.shop },

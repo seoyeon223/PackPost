@@ -1,28 +1,24 @@
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
-import { authenticate, PRO_PLAN } from "../shopify.server";
-import db from "../db.server";
+import { authenticate } from "../shopify.server";
+import { syncShopPlan } from "../models/billing.server";
 import { getBillingMessages, resolveLocale } from "../i18n";
 
-// This app is listed with Shopify-managed pricing plans (required for the
-// App Store listing), so Shopify — not this app — owns plan selection and
-// charge creation; calling billing.request()/billing.cancel() ourselves is
-// rejected once public plans exist. This page only reads the current plan
-// (billing.check() still works for that) to drive the free-tier order cap
-// and the storefront widget's badge; merchants change plans through
-// Shopify's own plan management screen.
+// This app is listed with Shopify App Pricing (formerly "Managed Pricing",
+// required for the App Store listing), so Shopify — not this app — owns
+// plan selection and charge creation; calling
+// billing.request()/billing.cancel() ourselves is rejected once public
+// plans exist. This page only reads the current plan (see
+// models/billing.server.ts for why that's a Partner API call, not
+// billing.check()) to drive the free-tier order cap and the storefront
+// widget's badge; merchants change plans through Shopify's own plan
+// management screen.
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const { session, billing } = await authenticate.admin(request);
+  const { session, admin, billing } = await authenticate.admin(request);
   const locale = resolveLocale(request.headers.get("accept-language"));
 
-  const { hasActivePayment } = await billing.check({ plans: [PRO_PLAN] });
-  const plan = hasActivePayment ? "pro" : "free";
-
-  await db.shop.update({
-    where: { shopDomain: session.shop },
-    data: { plan, hideBranding: hasActivePayment },
-  });
+  const plan = await syncShopPlan({ shopDomain: session.shop, admin, billing });
 
   return { locale, plan };
 };

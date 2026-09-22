@@ -210,11 +210,38 @@ webhook 구독 + 테마 익스텐션 + (4-5단계에서 바꾼) App URL/redirect
    - Request Headers에 `x-cleanup-secret: <생성한 값>` 추가
 4. `/internal/cleanup`은 헤더의 시크릿이 일치할 때만 동작하며, `updatedAt` 기준 24개월이 지난 `OrderTimeline`(및 연결된 `StageUpdate` 이력)을 삭제합니다. 보관 기간을 바꾸려면 [app/models/timeline.server.ts](app/models/timeline.server.ts)의 `RETENTION_MONTHS` 값을 수정하세요.
 
-## 8. 요금제 (Shopify Managed Pricing)
+## 8. 요금제 (Shopify App Pricing, 구 Managed Pricing)
 - Free: 월 50건 주문까지, 위젯에 "Powered by PackPost" 배지
 - Pro: $6.99/월, 주문 수 제한 없음, 배지 제거
 - Partner 대시보드의 Pricing 섹션에 이 두 plan을 **public plan으로 등록해야 앱스토어 리스팅이 통과됩니다.** public plan이 하나라도 등록되면 앱이 자동으로 "Shopify App Pricing"(관리형) 모드가 되어, 앱이 직접 `billing.request()`/`billing.cancel()`을 호출하는 게 막힙니다 — 그래서 플랜 업그레이드/해지는 앱 코드가 아니라 Shopify의 자체 플랜 관리 화면에서 이루어집니다.
-- 관리자 화면의 **요금제** 메뉴(`/app/billing`)는 `billing.check()`로 현재 플랜만 읽어서 보여주는 용도입니다 (주문 한도/배지 제거 여부를 여기서 판단).
+- 관리자 화면의 **요금제** 메뉴(`/app/billing`)는 [app/models/billing.server.ts](app/models/billing.server.ts)의 `syncShopPlan()`으로 현재 플랜만 읽어서 보여주는 용도입니다 (주문 한도/배지 제거 여부를 여기서 판단).
+
+### 8-1. 현재 플랜 조회는 Partner API로 한다 (Admin API `billing.check()`가 아님)
+App Store 심사에서 "요금제를 선택해도 앱에 반영되지 않고 계속 Free로 표시된다"(1.2.2)는 피드백을 받았던 원인입니다. Shopify App Pricing(구 Managed Pricing)으로 판매하는 앱은 merchant가 Shopify가 호스팅하는 화면에서 직접 구독하기 때문에, **Admin GraphQL API의 `currentAppInstallation.activeSubscriptions`(=`billing.check()`가 읽는 데이터)는 이 구독을 반영하지 않습니다.** 대신 **Partner API**의 `activeSubscription(appId, shopId)`를 조회해야 합니다. 이 앱은 [app/partner-api.server.ts](app/partner-api.server.ts)에서 Partner API를 호출하고, `billing.check()`는 (이 앱을 Shopify App Pricing으로 전환하기 전 테스트로 만들었을 수 있는) 예전 Billing API 구독을 잡아내기 위한 보조 수단으로만 남겨뒀습니다.
+
+Partner API는 매장별 세션이 아니라 **파트너 조직 단위의 별도 자격 증명**이 필요합니다. 아래 값을 발급받아 환경변수로 등록하세요 (`.env.example` 참고):
+1. **`SHOPIFY_PARTNER_ORG_ID`** — 로그인한 상태에서 Partner 대시보드 URL의 숫자 부분(`partners.shopify.com/<이 숫자>/...`)
+2. **`SHOPIFY_PARTNER_API_ACCESS_TOKEN`** — Partner 대시보드 → **Settings → Partner API clients**에서 **"Manage apps"** 권한을 가진 클라이언트를 새로 만들고 발급되는 access token (조직 소유자만 생성 가능)
+3. **`SHOPIFY_APP_GID`** — `gid://shopify/App/<숫자>` 형태. `<숫자>`는 이 앱의 Partner 대시보드 URL에 있는 앱 ID
+
+세 값을 Azure Container App 시크릿/환경변수에도 반드시 등록하세요 (4-4단계와 같은 방식):
+```powershell
+$secretArgs = @(
+  "containerapp", "secret", "set",
+  "--name", "packpost",
+  "--resource-group", "packpost-rg",
+  "--secrets",
+    "partner-org-id=<SHOPIFY_PARTNER_ORG_ID 값>",
+    "partner-api-token=<SHOPIFY_PARTNER_API_ACCESS_TOKEN 값>"
+)
+& az @secretArgs
+
+az containerapp update --name packpost --resource-group packpost-rg --set-env-vars `
+  SHOPIFY_PARTNER_ORG_ID=secretref:partner-org-id `
+  SHOPIFY_PARTNER_API_ACCESS_TOKEN=secretref:partner-api-token `
+  SHOPIFY_APP_GID="gid://shopify/App/<앱 ID>"
+```
+이 세 값이 없으면 `fetchActiveSubscription()`이 조용히 `null`을 반환하고 `billing.check()` 결과만 쓰게 되어, 위와 똑같이 유료 요금제가 앱에 반영되지 않는 문제가 재발합니다 — 배포 후 실제 유료 플랜으로 전환 테스트를 꼭 해보세요.
 
 ## 참고
 - Neon compute가 idle 후 첫 요청은 1~2초 느릴 수 있습니다 (무료 티어 특성) — 초기 트래픽에서는 무시 가능한 수준입니다.
